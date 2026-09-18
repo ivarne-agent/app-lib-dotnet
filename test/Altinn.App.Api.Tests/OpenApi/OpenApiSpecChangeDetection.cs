@@ -44,7 +44,7 @@ public class OpenApiSpecChangeDetection : ApiTestBase, IClassFixture<WebApplicat
         OpenApiDocument document = reader.Read(stream, out OpenApiDiagnostic diagnostic);
         Assert.Empty(diagnostic.Errors);
         AssertPathParametersBelongToRoutes(document);
-        document.Info.Version = "";
+        document.Info.Version = ""; // This includes the nuget version
         await VerifyJson(
             document.Serialize(CustomOpenApiController.SpecVersion, CustomOpenApiController.SpecFormat),
             _verifySettings
