@@ -73,6 +73,11 @@ public sealed partial class AppFixture
                 {
                     model = (T)(object)rawBody;
                 }
+                else if (!response.IsSuccessStatusCode)
+                {
+                    // Error responses carry a problem document, not T. Leave the model null so the snapshot
+                    // falls back to the raw body instead of showing an empty T (Argon does not enforce required members).
+                }
                 else
                 {
                     model = Argon.JsonConvert.DeserializeObject<T>(body);
