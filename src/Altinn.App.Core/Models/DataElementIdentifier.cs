@@ -117,7 +117,7 @@ public readonly struct DataElementIdentifier : IEquatable<DataElementIdentifier>
     /// <summary>
     /// Custom JSON converter to ensure that the struct is serialized and deserialized as a string containing the guid, to be compatible with existing code that uses strings for DataElement IDs
     /// </summary>
-    public class DataElementIdentifierConverter : JsonConverter<DataElementIdentifier>
+    internal sealed class DataElementIdentifierConverter : JsonConverter<DataElementIdentifier>
     {
         /// <inheritdoc/>
         public override DataElementIdentifier Read(
