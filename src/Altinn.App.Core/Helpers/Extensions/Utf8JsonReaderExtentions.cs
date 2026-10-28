@@ -17,13 +17,6 @@ internal static class Utf8JsonReaderExtensions
         return Encoding.UTF8.GetString(stream.ToArray());
     }
 
-    internal static void WriteRawFormattedValue(this Utf8JsonWriter writer, string json)
-    {
-        var jsonReader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json), isFinalBlock: true, state: default);
-        jsonReader.Read(); // Need to read first token to initialize the reader
-        Copy(ref jsonReader, writer);
-    }
-
     private static void Copy(ref Utf8JsonReader reader, Utf8JsonWriter writer)
     {
         switch (reader.TokenType)
