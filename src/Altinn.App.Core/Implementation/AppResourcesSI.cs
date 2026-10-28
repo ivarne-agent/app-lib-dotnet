@@ -542,12 +542,20 @@ public class AppResourcesSI : IAppResources
     }
 
     /// <inheritdoc />
-    public CalculationSchema? GetCalculationConfiguration(string dataTypeId)
+    [Obsolete("Use GetCalculationSchema instead")]
+    public string? GetCalculationConfiguration(string dataTypeId)
     {
         using var activity = _telemetry?.StartGetCalculationConfigurationActivity();
-        string legalPath = Path.Join(_settings.AppBasePath, _settings.ModelsFolder);
-        string filename = Path.Join(legalPath, $"{dataTypeId}.{_settings.CalculationConfigurationFileName}");
-        PathHelper.EnsureLegalPath(legalPath, filename);
+        string filename = GetCalculationConfigurationPath(dataTypeId);
+
+        return File.Exists(filename) ? File.ReadAllText(filename, Encoding.UTF8) : null;
+    }
+
+    /// <inheritdoc />
+    public CalculationSchema? GetCalculationSchema(string dataTypeId)
+    {
+        using var activity = _telemetry?.StartGetCalculationConfigurationActivity();
+        string filename = GetCalculationConfigurationPath(dataTypeId);
 
         if (!File.Exists(filename))
         {
@@ -558,5 +566,13 @@ public class AppResourcesSI : IAppResources
             File.ReadAllText(filename, Encoding.UTF8),
             _jsonSerializerOptions
         );
+    }
+
+    private string GetCalculationConfigurationPath(string dataTypeId)
+    {
+        string legalPath = Path.Join(_settings.AppBasePath, _settings.ModelsFolder);
+        string filename = Path.Join(legalPath, $"{dataTypeId}.{_settings.CalculationConfigurationFileName}");
+        PathHelper.EnsureLegalPath(legalPath, filename);
+        return filename;
     }
 }

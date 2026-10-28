@@ -178,5 +178,12 @@ public interface IAppResources
     /// Gets the calculation configuration for a given data type
     /// </summary>
     /// <returns>The calculation configuration in JSON format represented as string</returns>
-    CalculationSchema? GetCalculationConfiguration(string dataTypeId);
+    [Obsolete("Use GetCalculationSchema instead")]
+    string? GetCalculationConfiguration(string dataTypeId);
+
+    /// <summary>
+    /// Gets the parsed calculation configuration for a given data type
+    /// </summary>
+    /// <returns>The calculation configuration, or null if the data type has no calculation configuration file</returns>
+    CalculationSchema? GetCalculationSchema(string dataTypeId);
 }

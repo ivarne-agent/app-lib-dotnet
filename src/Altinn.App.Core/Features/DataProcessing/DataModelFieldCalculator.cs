@@ -41,7 +41,7 @@ internal sealed class DataModelFieldCalculator
                 continue;
             }
 
-            var calculationSchema = _appResourceService.GetCalculationConfiguration(dataType.Id);
+            var calculationSchema = _appResourceService.GetCalculationSchema(dataType.Id);
             if (calculationSchema is not null)
             {
                 await CalculateFormData(dataAccessor, dataElement, calculationSchema);

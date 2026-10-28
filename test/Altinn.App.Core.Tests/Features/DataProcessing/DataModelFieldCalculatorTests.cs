@@ -178,9 +178,7 @@ public sealed class DataModelFieldCalculatorTests
                     ? null
                     : new TextResource { Language = "nb", Resources = testCase.TextResources }
             );
-        _appResources
-            .Setup(ar => ar.GetCalculationConfiguration(It.IsAny<string>()))
-            .Returns(testCase.CalculationConfig);
+        _appResources.Setup(ar => ar.GetCalculationSchema(It.IsAny<string>())).Returns(testCase.CalculationConfig);
 
         if (testCase.DataModels is not null)
         {

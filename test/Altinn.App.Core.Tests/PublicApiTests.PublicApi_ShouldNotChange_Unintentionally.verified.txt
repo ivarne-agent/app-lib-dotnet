@@ -2452,7 +2452,9 @@ namespace Altinn.App.Core.Implementation
         public Altinn.Platform.Storage.Interface.Models.Application GetApplication() { }
         public string? GetApplicationBPMNProcess() { }
         public string? GetApplicationXACMLPolicy() { }
-        public Altinn.App.Core.Models.Calculation.CalculationSchema? GetCalculationConfiguration(string dataTypeId) { }
+        [System.Obsolete("Use GetCalculationSchema instead")]
+        public string? GetCalculationConfiguration(string dataTypeId) { }
+        public Altinn.App.Core.Models.Calculation.CalculationSchema? GetCalculationSchema(string dataTypeId) { }
         public string GetClassRefForLogicDataType(string dataType) { }
         public System.Threading.Tasks.Task<string?> GetFooter() { }
         [System.Obsolete("Use GetLayoutModelForTask instead")]
@@ -3018,7 +3020,9 @@ namespace Altinn.App.Core.Internal.App
         [System.Obsolete("GetApplication is scheduled for removal. Use Altinn.App.Core.Internal.App.IAppMet" +
             "adata.GetApplicationXACMLPolicy instead", false)]
         string? GetApplicationXACMLPolicy();
-        Altinn.App.Core.Models.Calculation.CalculationSchema? GetCalculationConfiguration(string dataTypeId);
+        [System.Obsolete("Use GetCalculationSchema instead")]
+        string? GetCalculationConfiguration(string dataTypeId);
+        Altinn.App.Core.Models.Calculation.CalculationSchema? GetCalculationSchema(string dataTypeId);
         string GetClassRefForLogicDataType(string dataType);
         System.Threading.Tasks.Task<string?> GetFooter();
         [System.Obsolete("Use GetLayoutModelForTask instead", false)]

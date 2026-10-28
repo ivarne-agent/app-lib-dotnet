@@ -285,11 +285,11 @@ public class AppResourcesSITests
     }
 
     [Fact]
-    public void GetCalculationConfiguration_deserializes_file_from_disk()
+    public void GetCalculationSchema_deserializes_file_from_disk()
     {
         IAppResources appResources = GetAppResourcesForCalculation();
 
-        CalculationSchema? actual = appResources.GetCalculationConfiguration("default");
+        CalculationSchema? actual = appResources.GetCalculationSchema("default");
 
         Assert.NotNull(actual);
         Assert.Equal(2, actual.Calculations.Count);
@@ -303,21 +303,35 @@ public class AppResourcesSITests
     }
 
     [Fact]
-    public void GetCalculationConfiguration_returns_null_when_file_is_missing()
+    public void GetCalculationSchema_returns_null_when_file_is_missing()
     {
         IAppResources appResources = GetAppResourcesForCalculation();
 
-        CalculationSchema? actual = appResources.GetCalculationConfiguration("does-not-exist");
+        CalculationSchema? actual = appResources.GetCalculationSchema("does-not-exist");
 
         Assert.Null(actual);
     }
 
     [Fact]
-    public void GetCalculationConfiguration_accepts_comments_in_file()
+    public void GetCalculationConfiguration_returns_raw_file_content()
     {
         IAppResources appResources = GetAppResourcesForCalculation();
 
-        CalculationSchema? actual = appResources.GetCalculationConfiguration("comments");
+#pragma warning disable CS0618 // Type or member is obsolete
+        string? actual = appResources.GetCalculationConfiguration("default");
+        string? missing = appResources.GetCalculationConfiguration("does-not-exist");
+#pragma warning restore CS0618 // Type or member is obsolete
+
+        Assert.Equal(File.ReadAllText(Path.Join(_appBasePath, "Calculation", "default.calculation.json")), actual);
+        Assert.Null(missing);
+    }
+
+    [Fact]
+    public void GetCalculationSchema_accepts_comments_in_file()
+    {
+        IAppResources appResources = GetAppResourcesForCalculation();
+
+        CalculationSchema? actual = appResources.GetCalculationSchema("comments");
 
         Assert.NotNull(actual);
         var calculation = Assert.Single(actual.Calculations);
@@ -326,21 +340,21 @@ public class AppResourcesSITests
     }
 
     [Fact]
-    public void GetCalculationConfiguration_throws_on_invalid_json()
+    public void GetCalculationSchema_throws_on_invalid_json()
     {
         IAppResources appResources = GetAppResourcesForCalculation();
 
-        Assert.Throws<JsonException>(() => appResources.GetCalculationConfiguration("invalid"));
+        Assert.Throws<JsonException>(() => appResources.GetCalculationSchema("invalid"));
     }
 
     [Fact]
-    public void GetCalculationConfiguration_throws_on_legacy_dictionary_format()
+    public void GetCalculationSchema_throws_on_legacy_dictionary_format()
     {
         // Before the "calculations" property became a list it was an object keyed by field name.
         // Such files are no longer supported and must be rejected rather than silently ignored.
         IAppResources appResources = GetAppResourcesForCalculation();
 
-        Assert.Throws<JsonException>(() => appResources.GetCalculationConfiguration("legacy"));
+        Assert.Throws<JsonException>(() => appResources.GetCalculationSchema("legacy"));
     }
 
     private IAppResources GetAppResourcesForCalculation()
