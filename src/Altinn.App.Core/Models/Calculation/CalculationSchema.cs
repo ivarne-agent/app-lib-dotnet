@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Altinn.App.Core.Models.Calculation;
@@ -5,7 +6,7 @@ namespace Altinn.App.Core.Models.Calculation;
 /// <summary>
 /// Represents the schema for the calculation configuration
 /// </summary>
-public class CalculationSchema
+public class CalculationSchema : IJsonOnDeserialized
 {
     /// <summary>
     /// The JSON schema that describes the calculation configuration file.
@@ -18,4 +19,17 @@ public class CalculationSchema
     /// </summary>
     [JsonPropertyName("calculations")]
     public required List<CalculationItem> Calculations { get; init; }
+
+    void IJsonOnDeserialized.OnDeserialized()
+    {
+        // required only ensures that the property is present, not that it is non-null
+        if (Calculations is null)
+        {
+            throw new JsonException("\"calculations\" must be an array");
+        }
+        if (Calculations.Contains(null!))
+        {
+            throw new JsonException("\"calculations\" must not contain null");
+        }
+    }
 }

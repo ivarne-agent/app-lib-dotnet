@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Altinn.App.Core.Models.Expressions;
 
@@ -6,7 +7,7 @@ namespace Altinn.App.Core.Models.Calculation;
 /// <summary>
 /// Calculation item in the calculation configuration
 /// </summary>
-public class CalculationItem
+public class CalculationItem : IJsonOnDeserialized
 {
     /// <summary>
     /// The base field to be calculated.
@@ -20,4 +21,13 @@ public class CalculationItem
     /// </summary>
     [JsonPropertyName("expression")]
     public required Expression Expression { get; init; }
+
+    void IJsonOnDeserialized.OnDeserialized()
+    {
+        // required only ensures that the property is present, not that it is non-null
+        if (string.IsNullOrWhiteSpace(Field))
+        {
+            throw new JsonException("\"field\" must be a non-empty string");
+        }
+    }
 }

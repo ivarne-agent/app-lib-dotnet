@@ -357,6 +357,21 @@ public class AppResourcesSITests
         Assert.Throws<JsonException>(() => appResources.GetCalculationSchema("legacy"));
     }
 
+    [Theory]
+    [InlineData("null-document")]
+    [InlineData("null-calculations")]
+    [InlineData("null-item")]
+    [InlineData("null-field")]
+    [InlineData("empty-field")]
+    public void GetCalculationSchema_throws_with_file_name_on_null_values(string dataTypeId)
+    {
+        IAppResources appResources = GetAppResourcesForCalculation();
+
+        var exception = Assert.Throws<JsonException>(() => appResources.GetCalculationSchema(dataTypeId));
+
+        Assert.Contains($"{dataTypeId}.calculation.json", exception.Message);
+    }
+
     private IAppResources GetAppResourcesForCalculation()
     {
         AppSettings appSettings = new()

@@ -562,10 +562,20 @@ public class AppResourcesSI : IAppResources
             return null;
         }
 
-        return System.Text.Json.JsonSerializer.Deserialize<CalculationSchema>(
-            File.ReadAllText(filename, Encoding.UTF8),
-            _jsonSerializerOptions
-        );
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<CalculationSchema>(
+                    File.ReadAllText(filename, Encoding.UTF8),
+                    _jsonSerializerOptions
+                ) ?? throw new System.Text.Json.JsonException("The calculation configuration is null");
+        }
+        catch (System.Text.Json.JsonException e)
+        {
+            throw new System.Text.Json.JsonException(
+                $"Invalid calculation configuration in {Path.GetFileName(filename)}: {e.Message}",
+                e
+            );
+        }
     }
 
     private string GetCalculationConfigurationPath(string dataTypeId)
