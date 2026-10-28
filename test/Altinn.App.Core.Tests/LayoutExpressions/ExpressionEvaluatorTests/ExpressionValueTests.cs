@@ -191,6 +191,12 @@ public class ExpressionValueTests(ITestOutputHelper outputHelper)
         Assert.Throws<InvalidCastException>(() => undefinedValue.JsonObject);
         Assert.Throws<InvalidCastException>(() => undefinedValue.JsonArray);
 
+        // TryDeserialize treats undefined as null for every nullable target type, including object
+        Assert.True(undefinedValue.TryDeserialize(typeof(string), out var stringResult));
+        Assert.Null(stringResult);
+        Assert.True(undefinedValue.TryDeserialize(typeof(object), out var objectResult));
+        Assert.Null(objectResult);
+
         Assert.Equal("null", JsonSerializer.Serialize(undefinedValue));
         Assert.Throws<NotImplementedException>(() => undefinedValue.GetHashCode());
         Assert.Throws<NotImplementedException>(() => undefinedValue.Equals(undefinedValue));
