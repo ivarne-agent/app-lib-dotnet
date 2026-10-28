@@ -766,6 +766,8 @@ public readonly struct ExpressionValue : IEquatable<ExpressionValue>
                 break;
             case JsonValueKind.Object:
             case JsonValueKind.Array:
+                // WriteRawValue would ignore the indentation of the outer writer,
+                // so pay for a parse to write the value token by token
                 JsonSerializer.Serialize(writer, JsonElement);
                 break;
             default:
