@@ -1,9 +1,11 @@
 using Altinn.App.Core.Features;
 using Altinn.App.Core.Features.Auth;
 using Altinn.App.Core.Features.Maskinporten;
+using Altinn.App.Core.Features.Maskinporten.Models;
 using Altinn.App.Core.Helpers;
 using Altinn.App.Core.Internal.App;
 using Altinn.App.Core.Models;
+using Microsoft.Extensions.Options;
 
 namespace Altinn.App.Core.Internal.Auth;
 
@@ -14,8 +16,9 @@ internal class AuthenticationTokenResolver : IAuthenticationTokenResolver
     private readonly IAppMetadata _appMetadata;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IAuthenticationContext _authenticationContext;
+    private readonly IOptionsMonitor<MaskinportenSettings> _maskinportenSettings;
 
-    private readonly bool _isDev;
+    private readonly bool _isLocaltest;
     private readonly string _localtestBaseUrl;
 
     public AuthenticationTokenResolver(
@@ -23,14 +26,16 @@ internal class AuthenticationTokenResolver : IAuthenticationTokenResolver
         IMaskinportenClient maskinportenClient,
         IAppMetadata appMetadata,
         IAuthenticationContext authenticationContext,
-        RuntimeEnvironment runtimeEnvironment
+        RuntimeEnvironment runtimeEnvironment,
+        IOptionsMonitor<MaskinportenSettings> maskinportenSettings
     )
     {
         _maskinportenClient = maskinportenClient;
         _appMetadata = appMetadata;
         _httpClientFactory = httpClientFactory;
         _authenticationContext = authenticationContext;
-        _isDev = runtimeEnvironment.IsLocaltestPlatform();
+        _maskinportenSettings = maskinportenSettings;
+        _isLocaltest = runtimeEnvironment.IsLocaltestPlatform();
         _localtestBaseUrl = runtimeEnvironment.GetPlatformBaseUrl();
     }
 
@@ -43,12 +48,40 @@ internal class AuthenticationTokenResolver : IAuthenticationTokenResolver
         return authenticationMethod switch
         {
             AuthenticationMethod.UserToken => GetCurrentUserToken(),
-            AuthenticationMethod.AltinnToken request when _isDev => await GetLocaltestToken(request, cancellationToken),
+            AuthenticationMethod.AltinnToken request when UseLocaltestOrgToken() => await GetLocaltestToken(
+                request,
+                cancellationToken
+            ),
             AuthenticationMethod.AltinnToken request => await GetAltinnToken(request, cancellationToken),
             AuthenticationMethod.MaskinportenToken request => await GetMaskinportenToken(request, cancellationToken),
             AuthenticationMethod.CustomToken request => await request.TokenProvider.Invoke(),
             _ => throw new ArgumentException($"Invalid authentication method '{authenticationMethod.GetType().Name}'"),
         };
+    }
+
+    /// <summary>
+    /// <para>Whether a service owner token comes from localtest's test-token endpoint instead of the app's
+    /// Maskinporten client. Only on localtest, and only while no Maskinporten client is configured: a localtest
+    /// that has a Maskinporten fake and an exchange for it gets a client written for every run, and the app then
+    /// takes the same path as a deployed app. A localtest without them configures no client, and keeps the test
+    /// token.</para>
+    /// <para>A client is configured when <see cref="MaskinportenSettings"/> passes its validation, as the
+    /// <see cref="MaskinportenClient"/> requires. Asked on every request, because the settings file is reloaded
+    /// when it changes, so a client stored while the app runs reaches it without a restart.</para>
+    /// </summary>
+    private bool UseLocaltestOrgToken() => _isLocaltest && !IsMaskinportenClientConfigured();
+
+    private bool IsMaskinportenClientConfigured()
+    {
+        try
+        {
+            _ = _maskinportenSettings.CurrentValue;
+            return true;
+        }
+        catch (OptionsValidationException)
+        {
+            return false;
+        }
     }
 
     private async Task<JwtToken> GetMaskinportenToken(

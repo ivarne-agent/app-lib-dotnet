@@ -3,6 +3,7 @@ using Altinn.App.Core.Configuration;
 using Altinn.App.Core.Features;
 using Altinn.App.Core.Features.Auth;
 using Altinn.App.Core.Features.Maskinporten;
+using Altinn.App.Core.Features.Maskinporten.Extensions;
 using Altinn.App.Core.Helpers.Serialization;
 using Altinn.App.Core.Internal;
 using Altinn.App.Core.Internal.App;
@@ -10,6 +11,7 @@ using Altinn.App.Core.Internal.AppModel;
 using Altinn.App.Core.Internal.Auth;
 using Altinn.App.Core.Models;
 using Altinn.App.PlatformServices.Tests.Mocks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -129,6 +131,88 @@ public class AuthenticationTokenResolverTest
     }
 
     [Fact]
+    public async Task GetAccessToken_UsesTheMaskinportenClient_OnLocaltest_WhenAClientIsConfigured()
+    {
+        // Arrange: a localtest that configures a Maskinporten client for the run has a Maskinporten fake and an
+        // exchange for it, so the service owner token takes the same path as on a deployed app.
+        var authMethodAltinn = AuthenticationMethod.ServiceOwner("a", "b");
+        await using var fixture = Fixture.Create(
+            _generalSettingsLocal,
+            configuration: CreateConfiguration(_configuredMaskinportenClient)
+        );
+
+        // Act
+        var result = await fixture.AuthenticationTokenResolver.GetAccessToken(authMethodAltinn);
+
+        // Assert
+        Assert.Equal(_testTokens.ServiceOwnerTokenTt02, result);
+        fixture.Mocks.MaskinportenClientMock.Verify(
+            x =>
+                x.GetAltinnExchangedToken(
+                    It.Is<IEnumerable<string>>(scopes =>
+                        scopes.SequenceEqual(
+                            new[]
+                            {
+                                "altinn:serviceowner/instances.read",
+                                "altinn:serviceowner/instances.write",
+                                "a",
+                                "b",
+                            }
+                        )
+                    ),
+                    It.IsAny<CancellationToken>()
+                ),
+            Times.Once
+        );
+        fixture.Mocks.HttpClientFactoryMock.Verify(x => x.CreateClient(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetAccessToken_UsesTheLocaltestToken_OnLocaltest_WhenNoClientIsConfigured()
+    {
+        // Arrange: a localtest without a Maskinporten fake configures no client, and keeps its test token.
+        await using var fixture = Fixture.Create(_generalSettingsLocal);
+
+        // Act
+        var result = await fixture.AuthenticationTokenResolver.GetAccessToken(AuthenticationMethod.ServiceOwner());
+
+        // Assert
+        Assert.Equal(_testTokens.ServiceOwnerTokenLocal, result);
+        fixture.Mocks.MaskinportenClientMock.Verify(
+            x => x.GetAltinnExchangedToken(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+    }
+
+    [Fact]
+    public async Task GetAccessToken_UsesTheMaskinportenClient_OnLocaltest_WhenAClientIsStoredWhileRunning()
+    {
+        // Arrange
+        var configuration = CreateConfiguration([]);
+        await using var fixture = Fixture.Create(_generalSettingsLocal, configuration: configuration);
+        var resultBefore = await fixture.AuthenticationTokenResolver.GetAccessToken(
+            AuthenticationMethod.ServiceOwner()
+        );
+
+        // Act
+        foreach (var (key, value) in _configuredMaskinportenClient)
+        {
+            configuration[key] = value;
+        }
+        configuration.Reload();
+        var resultAfter = await fixture.AuthenticationTokenResolver.GetAccessToken(AuthenticationMethod.ServiceOwner());
+
+        // Assert
+        Assert.Equal(_testTokens.ServiceOwnerTokenLocal, resultBefore);
+        Assert.Equal(_testTokens.ServiceOwnerTokenTt02, resultAfter);
+        fixture.Mocks.HttpClientFactoryMock.Verify(x => x.CreateClient(It.IsAny<string>()), Times.Once);
+        fixture.Mocks.MaskinportenClientMock.Verify(
+            x => x.GetAltinnExchangedToken(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()),
+            Times.Once
+        );
+    }
+
+    [Fact]
     public void TestCases_HaveUniqueTokens()
     {
         var expectedTokenCount = TestCases.Count;
@@ -136,6 +220,15 @@ public class AuthenticationTokenResolverTest
 
         Assert.Equal(expectedTokenCount, tokens.Count);
     }
+
+    private static readonly Dictionary<string, string?> _configuredMaskinportenClient = new()
+    {
+        ["MaskinportenSettings:authority"] = "http://local.altinn.cloud/localtest/api/maskinporten/",
+        ["MaskinportenSettings:clientId"] = "ttd-localtest",
+    };
+
+    private static IConfigurationRoot CreateConfiguration(IEnumerable<KeyValuePair<string, string?>> values) =>
+        new ConfigurationBuilder().AddInMemoryCollection(values).Build();
 
     private sealed record Fixture : IAsyncDisposable
     {
@@ -146,7 +239,8 @@ public class AuthenticationTokenResolverTest
 
         public static Fixture Create(
             GeneralSettings? generalSettings = null,
-            Action<HttpRequestMessage>? localtestTokenCallback = null
+            Action<HttpRequestMessage>? localtestTokenCallback = null,
+            IConfiguration? configuration = null
         )
         {
             var mocks = new FixtureMocks();
@@ -184,6 +278,8 @@ public class AuthenticationTokenResolverTest
                 });
 
             var services = new ServiceCollection();
+            services.AddSingleton(configuration ?? CreateConfiguration([]));
+            services.ConfigureMaskinportenClient("MaskinportenSettings");
             services.AddRuntimeEnvironment();
             services.Configure<PlatformSettings>(options =>
                 options.ApiStorageEndpoint = _platformSettings.ApiStorageEndpoint
